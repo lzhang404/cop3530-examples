@@ -1,4 +1,4 @@
-TARGETS = array-params pass-by-ref-pointer object-array
+TARGETS = shallow-copy stack-vs-heap ref-vs-pointer object-array show_memo pointer
 CXXFLAGS = -Wall -std=c++14
 RM = rm -rf
 
