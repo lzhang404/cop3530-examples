@@ -10,24 +10,28 @@ class List {
     size = 0;
     arr = nullptr;
   }
-
   List(int count) {
     this->size = count;
     // dynamic data
     arr = new int[count];
   }
-
   List(int count, int value = 0) {
     this->size = count;
     arr = new int[count];
-    for (int i = 0; i < count; ++i) arr[i] = value;
+    for (int i = 0; i < count; ++i) 
+    {
+      arr[i] = value;
+    }
   }
 
   // copy constructor
   List(const List& other) {
     size = other.size;
     arr = new int[size];
-    for (int i = 0; i < size; ++i) arr[i] = other.arr[i];
+    for (int i = 0; i < size; ++i) 
+    {
+      arr[i] = other.arr[i];
+    }
   }
 
   // destructor
@@ -37,10 +41,18 @@ class List {
   // return List & reference to allow assignment to be used in expressions
   // e.g. cout << (obj1 = obj2) << endl;
   List& operator=(const List& other) {
+    if(this == &other)
+    {
+      return *this;
+    }
     size = other.size;
     delete[] arr;
     arr = new int[size];
-    for (int i = 0; i < size; ++i) arr[i] = other.arr[i];
+    for (int i = 0; i < size; ++i) 
+    {
+      arr[i] = other.arr[i];
+    }
+    cout << "Copy Assignment called\n";
     return *this;
   }
 
@@ -49,7 +61,10 @@ class List {
   int getSize() const { return size; }
 
   void print() const {
-    for (int i = 0; i < size; ++i) cout << arr[i] << " ";
+    for (int i = 0; i < size; ++i) 
+    {
+      cout << arr[i] << " ";
+    }
     cout << endl;
   }
 };

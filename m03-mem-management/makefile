@@ -1,4 +1,4 @@
-TARGETS = shallow-copy stack-vs-heap ref-vs-pointer object-array show_memo pointer
+TARGETS = shallow-copy stack-vs-heap ref-vs-pointer object-array show_memo pointer rule-of-3 rule-of-5
 CXXFLAGS = -Wall -std=c++14
 RM = rm -rf
 

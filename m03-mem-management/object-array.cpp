@@ -1,64 +1,40 @@
-// Purpose: contrast (1) one contiguous heap block of objects vs (2) an array of pointers
-//          each pointing to separately allocated objects.
-
 #include <iostream>
 #include <string>
-
 using namespace std;
 
 class State {
- private:
-  string name;
- public:
-  State();
-  State(const string &name);
-  string getName() const;
+private:
+    string name;
+public:
+    State() : name("") {}
+    State(const string& n) : name(n) {}
+    string getName() const { return name; }
 };
 
-State::State(): name("") {}
-
-State::State(const string &name): name(name) {}
-
-string State::getName() const {
-  return name;
-}
-
 int main() {
-    constexpr size_t N = 100;
+    const size_t N = 6;
 
-    cout << "=== 1) Raw 1D array of objects (one allocation) ===\n";
-    // One contiguous heap block that contains N State objects
-    State* states1 = new State[N];
+    cout << "=== 1D contiguous: new State[N] (one allocation) ===\n";
+    State* states1 = new State[N];                 // contiguous block of N objects
+    for (size_t i = 0; i < N; ++i) states1[i] = State("Alabama");
 
-    // Assign into each element (safe: State uses string)
-    for (size_t i = 0; i < N; ++i){
-       states1[i] = State("Alabama");
+    cout << "sizeof(State) = " << sizeof(State) << " bytes\n";
+    for (size_t i = 0; i < N; ++i) {
+        cout << "  &states1[" << i << "] = " << static_cast<const void*>(&states1[i])
+             << "  name=" << states1[i].getName() << "\n";
     }
-
-    cout << states1[0].getName() << "\n";
-
-    // Cleanup must match the allocation form (new[] ↔ delete[])
     delete[] states1;
 
-    cout << "\n=== 2) Array of pointers to objects (N allocations) ===\n";
+    cout << "\n=== 1D pointer table: new State*[N] + N x new State ===\n";
+    State** states2 = new State*[N]();             // pointer table (contiguous pointers)
+    for (size_t i = 0; i < N; ++i) states2[i] = new State("Alabama");
 
-    // First allocate a table of N pointers; value-initialize to nullptr
-    State** states2 = new State*[N]();
-
-    // Each element now gets its own independent allocation
-    for (size_t i = 0; i < N; ++i) 
-    {
-      states2[i] = new State("Alabama");
+    cout << "pointer table base  = " << static_cast<const void*>(states2) << "\n";
+    for (size_t i = 0; i < N; ++i) {
+        cout << " address of &states2[" << i << "] = " << static_cast<const void*>(&states2[i])
+             << "; the value of states2[" << i << "] = " << static_cast<const void*>(states2[i])
+             << " -> name=" << states2[i]->getName() << "\n";
     }
-    cout << states2[0]->getName() << "\n";
-    
-    // Cleanup order: delete each pointed-to object, then delete the pointer table
-    for (size_t i = 0; i < N; ++i) 
-    {
-      delete states2[i];
-    }  
+    for (size_t i = 0; i < N; ++i) delete states2[i];
     delete[] states2;
-
-    return 0;
 }
-

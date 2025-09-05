@@ -1,93 +1,78 @@
 #include <iostream>
-
+#include <cstdlib>
+#include <iomanip>
 using namespace std;
 
-// This example demonstrates a class that OWNS dynamic memory (raw int*).
-// It defines a destructor but does NOT define a copy constructor or copy assignment.
-// Consequence: the compiler generates default (shallow) copy behavior.
-// Shallow copies mean multiple List objects end up pointing to the SAME heap array.
-// When each destructor later runs, each will delete[] the same pointer → double/triple free crash.
-
-// List class
-//   Only has a destructor
-//   Missing copy constructor and copy assignment operator overloading
+// Class that OWNS a raw heap buffer but DOES NOT define Rule-of-3/5.
+// Copying is shallow → multiple objects hold the same pointer.
 class List {
- private:
-  int *array;  // pointer to a heap-allocated int array (or nullptr)
-  int size;    // number of elements stored
- public:
-  List();                          // default constructor: empty list
-  List(int count, int value = 0);  // construct with 'count' elements, each initialized to 'value'
-  ~List();                         // destructor: releases the owned heap memory (if any)
-  int &at(int index);              // returns reference to element (NO bounds checking)
-  void print();                    // prints all elements followed by newline
+private:
+    int* array;   // owned buffer (or nullptr)
+    int  size;
+
+public:
+    List() : array(nullptr), size(0) {}
+
+    List(int count, int value = 0) : array(new int[count]), size(count) {
+        for (int i = 0; i < size; ++i) array[i] = value;
+    }
+
+    // NO copy ctor, NO copy assignment → compiler generates SHALLOW copy.
+    ~List() {
+        // This will double-free if multiple List objects share the same 'array'
+        delete[] array;
+    }
+
+    int& at(int idx) { return array[idx]; }
+    int* data() const { return array; }  // expose pointer for demo only
+    int   length() const { return size; }
+
+    void print(const char* tag) const {
+        cout << tag << " values: ";
+        for (int i = 0; i < size; ++i) cout << array[i] << (i + 1 < size ? ' ' : '\n');
+    }
+
+    void show_addresses(const char* tag) const {
+        // Cast to const void* to print addresses portably
+        cout << fixed << setbase(10);
+        cout << tag
+             << " this=" << (const void*)this
+             << "  array(ptr)=" << (const void*)array;
+        if (array && size > 0) {
+            cout << "  &array[0]=" << (const void*)&array[0];
+            if (size > 1) cout << "  &array[1]=" << (const void*)&array[1];
+        }
+        cout << "\n";
+    }
 };
 
-List::List() {
-  // Start as an empty list with no allocated storage.
-  array = nullptr;
-  size = 0;
-}
-
-List::List(int count, int value) {
-  // Allocate 'count' ints on the heap and fill them with 'value'.
-  size = count;
-  array = new int[size];
-  for (int i = 0; i < count; ++i)
-    array[i] = value;
-}
-
-List::~List() {
-  // Release the owned array. If shallow copies exist, multiple objects will
-  // try to delete[] the same pointer → undefined behavior (typically a crash).
-  delete [] array;
-}
-
-int &List::at(int index) {
-  // Return a reference to the element at 'index'.
-  // Note: there is NO bounds checking; invalid indices cause undefined behavior.
-  return array[index];
-}
-
-void List::print() {
-  // Print elements separated by spaces, then newline.
-  for (int i = 0; i < size; ++i)
-    cout << array[i] << " ";
-  cout << endl;
-}
-
 int main() {
-  // Construct a list of 5 elements, all initialized to 10.
-  // Internally allocates a heap array of size 5 and stores its pointer in 'list.array'.
-  List list(5, 10);  // the constructor taking two int values is triggered
+    cout << "=== Construct one real owner ===\n";
+    List list(5, 10);
+    list.show_addresses("list  ");
+    list.print("list  ");
 
-  // Copy construction with NO user-defined copy constructor:
-  // The compiler-generated copy constructor performs a SHALLOW copy:
-  //   - copies 'size'
-  //   - copies the 'array' pointer VALUE (both objects point to the same heap block)
-  List list2(list);  // copy constructor is triggered
+    cout << "\n=== Copy-construct (SHALLOW) → list2 shares the same buffer ===\n";
+    List list2(list);       // shallow copy: array pointer value is copied
+    list2.show_addresses("list2 ");
+    list2.print("list2 ");
 
-  // Default construction produces an empty list (array == nullptr, size == 0)
-  List list3;  // the default constructor will be triggered
+    cout << "\n=== Default-construct then copy-assign (SHALLOW) → list3 shares too ===\n";
+    List list3;
+    list3 = list;           // shallow copy again
+    list3.show_addresses("list3 ");
+    list3.print("list3 ");
 
-  // Copy assignment with NO user-defined operator=:
-  // The compiler-generated assignment does a SHALLOW copy too.
-  // After this line, 'list3.array' points to the SAME memory as 'list.array' and 'list2.array'.
-  // Note: since list3 previously had nullptr, there is no leak here—but now three objects share one buffer.
-  list3 = list;  // default assignment operator is triggered
+    cout << "\n=== Mutate through one alias; all reflect it (shared storage) ===\n";
+    list.at(4) = 1;
+    list.print( "list  ");
+    list2.print("list2 ");
+    list3.print("list3 ");
 
-  // All three lists currently share the exact same underlying array.
-  list.print();  // 10 10 10 10 10
-  list2.print(); // 10 10 10 10 10
-  list3.print(); // 10 10 10 10 10
-
-  // Modify the 5th value through 'list'. Because of shallow copy, the change is visible in list2 and list3 as well.
-  list.at(4) = 1; // modify the 5th value
-
-  // All three outputs will be the same with the 5th value modified (evidence of shared storage).
-  list.print();  // 10 10 10 10 1
-  list2.print(); // 10 10 10 10 1
-  list3.print(); // 10 10 10 10 1
+    cout << "\nAddresses summary (all array(ptr) equal ⇒ one heap block shared):\n";
+    list.show_addresses( "list  ");
+    list2.show_addresses("list2 ");
+    list3.show_addresses("list3 ");
 
   // Important: when main returns, destructors run for list3, list2, and list (in reverse construction order).
   // Each destructor calls delete[] on the SAME pointer → double/triple free (undefined behavior).
